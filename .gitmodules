@@ -1,3 +1,6 @@
 [submodule "HC"]
 	path = HC
 	url = https://github.com/vrld/HC
+[submodule "Concord"]
+	path = Concord
+	url = https://github.com/Keyslam-Group/Concord.git
