@@ -16,6 +16,11 @@ Concord.component("drawable", function(c, imagePath)
     c.height = c.image:getHeight()
 end)
 
+Concord.component("inCombat",function( c, with)
+    c.with = with
+end)
+
+Concord.component("cantMove")
 
 Concord.component("playerMovable")
 
@@ -26,3 +31,8 @@ end)
 Concord.component("tangible", function(c, shape)
     c.shape = shape
 end)
+
+Concord.component("killable", function(c, lifePoint)
+    c.lifePoint = lifePoint
+end)
+Concord.component("killed")

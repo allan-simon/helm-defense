@@ -20,17 +20,22 @@ local player = baton.new {
 require('components')
 world:addSystems(unpack(require('systems')))
 
+
 local soldier = Concord.entity(world)
+:give("key", "robert")
 :give("futureTangible", 100, 100)
 :give("velocity", 100, 0)
 :give("drawable", 'soldier.png')
 :give("playerMovable")
+:give("killable", 100)
 
 local ennemy = Concord.entity(world)
+:give("key", "michel")
 :give("futureTangible", 500, 100, math.deg(90))
 :give("velocity", -100, 0)
 :give("drawable", 'ennemy.png')
-:give("hasTarget", soldier)
+:give("hasTarget", soldier.key.value)
+:give("killable", 10)
 
 
 love.draw = function()
@@ -43,6 +48,8 @@ love.update = function (dt)
     world:emit('followTarget')
     world:emit("update", dt)
     world:emit("detectCollision")
+    world:emit("combat", dt)
+    world:emit("removeKilled")
 end
 
 love.load = function ()
