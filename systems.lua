@@ -191,6 +191,27 @@ function KillRemoverSystem:removeKilled()
 end
 
 
+local entities = require("entities")
+
+local EnemySpawnerSystem = Concord.system({pool = {"killable"} })
+function EnemySpawnerSystem:spawn(player)
+    local world = self:getWorld()
+    local needSpawn = true
+    for _, e in ipairs(self.pool) do
+        if e:has("enemy") then
+            needSpawn = false
+            break
+        end
+    end
+
+    if needSpawn then
+        print("coucou")
+        Concord.entity(world)
+            :assemble(entities.ennemy, player)
+    end
+
+end
+
 return {
     DrawSystem,
     PlayerActionSystem,
@@ -200,4 +221,5 @@ return {
     CombatSystem,
     CollisionSystem,
     KillRemoverSystem,
+    EnemySpawnerSystem,
 }

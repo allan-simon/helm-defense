@@ -36,3 +36,5 @@ Concord.component("killable", function(c, lifePoint)
     c.lifePoint = lifePoint
 end)
 Concord.component("killed")
+Concord.component("enemy")
+Concord.component("needEnemy")

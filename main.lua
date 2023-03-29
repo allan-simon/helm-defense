@@ -3,7 +3,7 @@ local baton = require 'baton'
 local Concord = require("Concord")
 local world = Concord.world()
 
-local player = baton.new {
+local controller = baton.new {
 	controls = {
 		left = {'key:a', 'key:left', 'axis:leftx-', 'button:dpleft'},
 		right = {'key:d', 'key:right', 'axis:leftx+', 'button:dpright'},
@@ -20,22 +20,13 @@ local player = baton.new {
 require('components')
 world:addSystems(unpack(require('systems')))
 
+local entities = require("entities")
 
-local soldier = Concord.entity(world)
-:give("key", "robert")
-:give("futureTangible", 100, 100)
-:give("velocity", 100, 0)
-:give("drawable", 'soldier.png')
-:give("playerMovable")
-:give("killable", 100)
+local firstPlayer = Concord.entity(world)
+    :assemble(entities.soldier, "player1")
 
-local ennemy = Concord.entity(world)
-:give("key", "michel")
-:give("futureTangible", 500, 100, math.deg(90))
-:give("velocity", -100, 0)
-:give("drawable", 'ennemy.png')
-:give("hasTarget", soldier.key.value)
-:give("killable", 10)
+Concord.entity(world)
+    :assemble(entities.ennemy, firstPlayer.key.value)
 
 
 love.draw = function()
@@ -43,15 +34,17 @@ love.draw = function()
 end
 
 love.update = function (dt)
-    player:update()
-    world:emit('playerMove', player)
+    print("update")
+    controller:update()
+    world:emit("toTangible")
+    world:emit('playerMove', controller)
     world:emit('followTarget')
     world:emit("update", dt)
     world:emit("detectCollision")
     world:emit("combat", dt)
     world:emit("removeKilled")
+    world:emit("spawn", firstPlayer.key.value)
 end
 
 love.load = function ()
-    world:emit("toTangible")
 end
