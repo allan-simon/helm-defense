@@ -6,6 +6,7 @@ function soldier(e, name)
     :give("velocity", 100, 0)
     :give("drawable", 'soldier.png')
     :give("playerMovable")
+    :give("ally")
     :give("killable", 100)
 end
 

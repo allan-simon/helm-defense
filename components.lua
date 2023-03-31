@@ -16,8 +16,11 @@ Concord.component("drawable", function(c, imagePath)
     c.height = c.image:getHeight()
 end)
 
-Concord.component("inCombat",function( c, with)
+
+Concord.component("attacking",function( c, with, attackingUsingSide, attackedSide)
     c.with = with
+    c.attackingUsingSide = attackingUsingSide
+    c.attackedSide = attackedSide
 end)
 
 Concord.component("cantMove")
@@ -37,4 +40,4 @@ Concord.component("killable", function(c, lifePoint)
 end)
 Concord.component("killed")
 Concord.component("enemy")
-Concord.component("needEnemy")
+Concord.component("ally")

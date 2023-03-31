@@ -33,14 +33,22 @@ love.draw = function()
     world:emit("draw")
 end
 
+local elapsedTime = 0
+
 love.update = function (dt)
-    print("update")
+
+    -- be able to plug joystick after game has began
+    elapsedTime = elapsedTime + dt
+    if  controller.config.joystick == nil and elapsedTime > 5 then
+        controller.config.joystick = love.joystick.getJoysticks()[1]
+    end
+
     controller:update()
     world:emit("toTangible")
     world:emit('playerMove', controller)
     world:emit('followTarget')
     world:emit("update", dt)
-    world:emit("detectCollision")
+    world:emit("detectCollision", dt)
     world:emit("combat", dt)
     world:emit("removeKilled")
     world:emit("spawn", firstPlayer.key.value)
