@@ -5,7 +5,8 @@ Concord.component("futureTangible", function(c, x, y, rotation)
     c.rotation = rotation or 0
 end)
 
-Concord.component("velocity", function(c, x, y)
+Concord.component("velocity", function(c, maxSpeed, x, y)
+    c.maxSpeed = maxSpeed
     c.x = x or 0
     c.y = y or 0
 end)
@@ -27,6 +28,7 @@ Concord.component("cantMove")
 
 Concord.component("playerMovable")
 
+Concord.component("needTarget")
 Concord.component("hasTarget", function(c, target)
     c.target = target
 end)

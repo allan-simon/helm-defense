@@ -1,4 +1,5 @@
 local Concord = require("Concord")
+local HC = require("HC")
 
 local MoveSystem = Concord.system({
     pool = {"tangible", "velocity"}
@@ -58,8 +59,8 @@ function PlayerActionSystem:playerMove(player)
             e.tangible.shape:setRotation(angle)
         end
 
-        e.velocity.x = x * 100
-        e.velocity.y = y * 100
+        e.velocity.x = x * e.velocity.maxSpeed
+        e.velocity.y = y * e.velocity.maxSpeed
 
         ::continue::
     end
@@ -88,8 +89,8 @@ function FollowTargetSystem:followTarget()
         local angle = atan2(dy, dx)
 
         -- and we use it to adapt the velocity to go toward the target
-        e.velocity.x = math.cos(angle) * 90
-        e.velocity.y = math.sin(angle) * 90
+        e.velocity.x = math.cos(angle) * e.velocity.maxSpeed
+        e.velocity.y = math.sin(angle) * e.velocity.maxSpeed
 
         ::continue::
     end
@@ -99,7 +100,6 @@ local DrawableToTangibleSystem = Concord.system({
     pool = {"drawable", "futureTangible"}
 })
 
-local HC = require("HC")
 function DrawableToTangibleSystem:toTangible()
     for _, e in ipairs(self.pool) do
 
@@ -233,6 +233,9 @@ function CombatSystem:combat()
                 defender:ensure("killed")
                 e:remove("attacking")
                 e:remove("cantMove")
+
+                e:remove("hasTarget")
+                e:ensure("needTarget")
             end
         end
 
@@ -252,9 +255,53 @@ function KillRemoverSystem:removeKilled()
     end
 end
 
+--
+
+local FindTargetSystem = Concord.system({pool = {"needTarget", "tangible", "enemy"} })
+function FindTargetSystem:lookForTarget()
+
+    local world = self:getWorld()
+    local spatialHash = HC.hash()
+
+
+    for _, e in ipairs(self.pool) do
+
+        local nearest = nil
+        local distance = math.huge
+
+
+        local eX, eY = e.tangible.shape:center()
+
+        for _, shape in pairs(spatialHash:shapes()) do
+            local target = world:getEntityByKey(shape._key)
+            print("wuut")
+            if target:has('ally') then
+                print("ally?")
+
+                local x, y = shape:center()
+                local currentDistance = (
+                    (eX - x)*(eX - x) +
+                    (eY - y)*(eY - y)
+                )
+                if currentDistance < distance then
+                    nearest = shape._key
+
+                end
+            end
+        end
+
+        if nearest ~= nil then
+            print("prout")
+            e:remove('needTarget')
+            e:ensure('hasTarget', nearest)
+        end
+
+    end
+end
+
+--
 
 local entities = require("entities")
-
 local EnemySpawnerSystem = Concord.system({pool = {"killable"} })
 function EnemySpawnerSystem:spawn(player)
     local world = self:getWorld()
@@ -283,4 +330,5 @@ return {
     CollisionSystem,
     KillRemoverSystem,
     EnemySpawnerSystem,
+    FindTargetSystem,
 }
