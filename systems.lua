@@ -86,11 +86,13 @@ function FollowTargetSystem:followTarget()
         local dx = tX - eX
         local dy = tY - eY
 
-        local angle = atan2(dy, dx)
+        local angle = atan2(dy, dx) + math.pi * 0.5
 
         -- and we use it to adapt the velocity to go toward the target
-        e.velocity.x = math.cos(angle) * e.velocity.maxSpeed
-        e.velocity.y = math.sin(angle) * e.velocity.maxSpeed
+        e.velocity.x = math.sin(angle) * e.velocity.maxSpeed
+        e.velocity.y = -1 * math.cos(angle) * e.velocity.maxSpeed
+
+        e.tangible.shape:setRotation(angle)
 
         ::continue::
     end
@@ -131,16 +133,21 @@ local fourth_of_pi = math.pi * 0.25
 function CollisionSystem:detectCollision(dt)
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
+        local teamNumber = e.team.teamNumber
         local shape = e.tangible.shape
         local velocity = e.velocity
         local collisions = HC.collisions(shape)
         for other, separating_vector in pairs(collisions) do
-            print(shape._key, "with other", other._key)
+            -- print(shape._key, "with other", other._key)
             local otherE = world:getEntityByKey(other._key)
 
+            shape:move(separating_vector.x*1.0001,  separating_vector.y * 1.0001)
+            --if (other
+            -- shape:move((otherE.velocity.x - velocity.x)*dt, (otherE.velocity.y - velocity.y)*dt)
 
-             -- shape:move(separating_vector.x*1.0001,  separating_vector.y * 1.0001)
-             shape:move((otherE.velocity.x - velocity.x)*dt, (otherE.velocity.y - velocity.y)*dt)
+            if teamNumber == otherE.team.teamNumber then
+                goto continue
+            end
 
             -- we get the angle from the two centroid to know
             -- we normalize to its rotation
@@ -203,6 +210,8 @@ function CollisionSystem:detectCollision(dt)
                 e:ensure("cantMove")
             end
 
+
+            ::continue::
         end
     end
 end
@@ -257,7 +266,7 @@ end
 
 --
 
-local FindTargetSystem = Concord.system({pool = {"needTarget", "tangible", "enemy"} })
+local FindTargetSystem = Concord.system({pool = {"needTarget", "tangible", "team"} })
 function FindTargetSystem:lookForTarget()
 
     local world = self:getWorld()
@@ -274,9 +283,8 @@ function FindTargetSystem:lookForTarget()
 
         for _, shape in pairs(spatialHash:shapes()) do
             local target = world:getEntityByKey(shape._key)
-            print("wuut")
-            if target:has('ally') then
-                print("ally?")
+
+            if e.team.teamNumber ~= (target:has('team') and target.team.teamNumber or e.team.teamNumber) then
 
                 local x, y = shape:center()
                 local currentDistance = (
@@ -290,8 +298,7 @@ function FindTargetSystem:lookForTarget()
             end
         end
 
-        if nearest ~= nil then
-            print("prout")
+        if nearest ~= nil and not e:has('playerMovable') then
             e:remove('needTarget')
             e:ensure('hasTarget', nearest)
         end
@@ -307,7 +314,7 @@ function EnemySpawnerSystem:spawn(player)
     local world = self:getWorld()
     local needSpawn = true
     for _, e in ipairs(self.pool) do
-        if e:has("enemy") then
+        if e:has("team") and e.team.teamNumber == 2 then
             needSpawn = false
             break
         end
@@ -315,7 +322,7 @@ function EnemySpawnerSystem:spawn(player)
 
     if needSpawn then
         Concord.entity(world)
-            :assemble(entities.ennemy, player)
+            :assemble(entities.enemy, player)
     end
 
 end

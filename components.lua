@@ -41,5 +41,12 @@ Concord.component("killable", function(c, lifePoint)
     c.lifePoint = lifePoint
 end)
 Concord.component("killed")
-Concord.component("enemy")
-Concord.component("ally")
+Concord.component("team", function(c, teamNumber)
+    c.teamNumber = teamNumber
+end)
+
+
+--
+Concord.component("squad", function(c, units)
+    c.units = units
+end)

@@ -22,11 +22,15 @@ world:addSystems(unpack(require('systems')))
 
 local entities = require("entities")
 
+local allySquad = Concord.entity(world)
+    :assemble(entities.allySquad)
+
 local firstPlayer = Concord.entity(world)
     :assemble(entities.soldier, "player1")
+    :give("playerMovable")
 
 Concord.entity(world)
-    :assemble(entities.ennemy, firstPlayer.key.value)
+    :assemble(entities.enemy, firstPlayer.key.value)
 
 
 love.draw = function()

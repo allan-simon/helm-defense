@@ -1,17 +1,17 @@
+local Concord = require("Concord")
 
-function soldier(e, name)
+local function soldier(e, name)
     e
     :give("key", name)
-    :give("futureTangible", 100, 100)
+    :give("futureTangible", 400, 400)
     :give("velocity", 100)
     :give("drawable", 'soldier.png')
-    :give("playerMovable")
-    :give("ally")
+    :give("team", 1)
     :give("killable", 100)
 end
 
 
-function ennemy(e, target)
+local function enemy(e, target)
     e
     :give("key")
     :give("futureTangible", 500, 100, math.deg(90))
@@ -19,11 +19,31 @@ function ennemy(e, target)
     :give("drawable", 'ennemy.png')
     :give("needTarget")
     :give("killable", 10)
-    :give("enemy")
+    :give("team", 2)
+end
+
+
+local function allySquad(e)
+    local world = e:getWorld()
+
+    e
+    :give("key")
+    :give("team", 1)
+
+    local keys = {}
+    for i = 1,10 do
+        local s = Concord.entity(world)
+            :assemble(soldier, nil)
+        keys[i] = s.key.value
+    end
+
+    e:give("squad", keys)
+
 end
 
 
 return {
     soldier=soldier,
-    ennemy=ennemy
+    enemy=enemy,
+    allySquad=allySquad,
 }
