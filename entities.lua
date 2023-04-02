@@ -30,7 +30,7 @@ local function allySquad(e)
     :give("key")
     :give("team", 1)
     :give("futureTangible")
-    :give("velocity", 10, 0, 0)
+    :give("velocity", 100, 0, 0)
 
     local keys = {}
     for i = 1,10 do
