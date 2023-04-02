@@ -16,7 +16,8 @@ end
 
 
 local DrawSystem = Concord.system({
-    pool = {"tangible", "drawable"}
+    pool = {"tangible", "drawable"},
+    squad = {"squad", "tangible"}
 })
 
 function DrawSystem:draw()
@@ -33,6 +34,10 @@ function DrawSystem:draw()
             e.drawable.width * 0.5,
             e.drawable.height * 0.5
         )
+    end
+
+    for _, e in ipairs(self.squad) do
+        e.tangible.shape:draw('line')
     end
 end
 
@@ -98,11 +103,13 @@ function FollowTargetSystem:followTarget()
     end
 end
 
-local DrawableToTangibleSystem = Concord.system({
-    pool = {"drawable", "futureTangible"}
+local ToTangibleSystem = Concord.system({
+    pool = {"drawable", "futureTangible"},
+    squads = {"futureTangible", "squad"}
 })
 
-function DrawableToTangibleSystem:toTangible()
+function ToTangibleSystem:toTangible()
+    local world = self:getWorld()
     for _, e in ipairs(self.pool) do
 
         local width = e.drawable.width
@@ -122,6 +129,48 @@ function DrawableToTangibleSystem:toTangible()
         )
         :remove("futureTangible")
     end
+
+    for _, e in ipairs(self.squads) do
+        local sumX = 0
+        local sumY = 0
+
+        local sumWidth = 0
+        local sumHeight = 0
+
+        -- TODO: compute the "circular mean"
+        local sumAngleX = 0
+        local sumAngleY = 0
+
+        for _, unitKey in ipairs(e.squad.units) do
+            local unit = world:getEntityByKey(unitKey)
+
+            local x, y = unit.tangible.shape:center()
+            sumX = sumX + x
+            sumY = sumY + y
+
+            sumWidth = sumWidth + unit.drawable.width
+            sumHeight = sumHeight + unit.drawable.height
+        end
+
+        local numberUnits = #e.squad.units
+        local totalHeight = sumHeight + (numberUnits * 2)
+        local totalWidth = sumHeight / numberUnits
+
+        local rectangle = HC.rectangle(
+            (sumX/numberUnits) - totalHeight* 0.5,
+            (sumY/numberUnits) - totalWidth* 0.5,
+            totalHeight,
+            totalWidth
+        )
+        rectangle._key = e.key.value
+
+        e:give(
+            'tangible',
+            rectangle
+        )
+        :remove('futureTangible')
+
+    end
 end
 
 local CollisionSystem = Concord.system({
@@ -133,13 +182,21 @@ local fourth_of_pi = math.pi * 0.25
 function CollisionSystem:detectCollision(dt)
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
+        if e:has('squad') then
+            goto bigContinue
+        end
         local teamNumber = e.team.teamNumber
         local shape = e.tangible.shape
         local velocity = e.velocity
         local collisions = HC.collisions(shape)
         for other, separating_vector in pairs(collisions) do
+
+
             -- print(shape._key, "with other", other._key)
             local otherE = world:getEntityByKey(other._key)
+            if otherE:has('squad') then
+                goto continue
+            end
 
             shape:move(separating_vector.x*1.0001,  separating_vector.y * 1.0001)
             --if (other
@@ -213,6 +270,7 @@ function CollisionSystem:detectCollision(dt)
 
             ::continue::
         end
+        ::bigContinue::
     end
 end
 
@@ -224,7 +282,7 @@ function CombatSystem:combat()
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
         print(e.key.value, " is attacking ", e.attacking.with, "from ", e.attacking.attackingUsingSide)
-        defender = world:getEntityByKey(e.attacking.with)
+        local defender = world:getEntityByKey(e.attacking.with)
         if defender == nil then
             e:remove("attacking")
             e:remove("cantMove")
@@ -283,6 +341,9 @@ function FindTargetSystem:lookForTarget()
 
         for _, shape in pairs(spatialHash:shapes()) do
             local target = world:getEntityByKey(shape._key)
+            if target:has('squad') then
+                goto continue
+            end
 
             if e.team.teamNumber ~= (target:has('team') and target.team.teamNumber or e.team.teamNumber) then
 
@@ -293,9 +354,10 @@ function FindTargetSystem:lookForTarget()
                 )
                 if currentDistance < distance then
                     nearest = shape._key
-
+                    distance = currentDistance
                 end
             end
+            ::continue::
         end
 
         if nearest ~= nil and not e:has('playerMovable') then
@@ -330,7 +392,7 @@ end
 return {
     DrawSystem,
     PlayerActionSystem,
-    DrawableToTangibleSystem,
+    ToTangibleSystem,
     FollowTargetSystem,
     MoveSystem,
     CombatSystem,
