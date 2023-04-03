@@ -26,7 +26,9 @@ end)
 
 Concord.component("cantMove")
 
-Concord.component("playerMovable")
+Concord.component("playerMovable", function (c)
+    c.angles = {}
+end)
 
 Concord.component("needTarget")
 Concord.component("hasTarget", function(c, target)

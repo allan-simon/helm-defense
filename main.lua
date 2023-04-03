@@ -24,10 +24,10 @@ local entities = require("entities")
 
 local allySquad = Concord.entity(world)
     :assemble(entities.allySquad)
+    :give("playerMovable")
 
 local firstPlayer = Concord.entity(world)
     :assemble(entities.soldier, "player1")
-    :give("playerMovable")
 
 Concord.entity(world)
     :assemble(entities.enemy, firstPlayer.key.value)

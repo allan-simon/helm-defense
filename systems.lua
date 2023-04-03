@@ -60,8 +60,26 @@ function PlayerActionSystem:playerMove(player)
             goto continue
         end
 
+        local shape = e.tangible.shape
         if angle ~= nil then
-            e.tangible.shape:setRotation(angle)
+            table.insert(e.playerMovable.angles, angle)
+            local currentAngle = shape:rotation()
+            -- when you release the keys of going in diagonal
+            -- during a very short instant you will have only
+            -- one key press, not two
+            -- so instead we take only the nth last angle to avoid this
+            local previousAngle = e.playerMovable.angles[
+                -- with the same logic we discard the nth first
+                -- input because they are not reliable
+                -- TODO: we should do this only for keyboard
+                math.max(7, #e.playerMovable.angles - 7)
+            ] or currentAngle
+            print("yo", angle)
+            e.tangible.shape:setRotation(previousAngle)
+        else
+            -- we reinit the angle buffer
+            -- when you stop moving, so that the buffer does not grow and grow
+            e.playerMovable.angles = {}
         end
 
         e.velocity.x = x * e.velocity.maxSpeed
