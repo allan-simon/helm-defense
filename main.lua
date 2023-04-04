@@ -37,15 +37,7 @@ love.draw = function()
     world:emit("draw")
 end
 
-local elapsedTime = 0
-
 love.update = function (dt)
-
-    -- be able to plug joystick after game has began
-    elapsedTime = elapsedTime + dt
-    if  controller.config.joystick == nil and elapsedTime > 5 then
-        controller.config.joystick = love.joystick.getJoysticks()[1]
-    end
 
     controller:update()
     world:emit("toTangible")
@@ -64,4 +56,10 @@ love.update = function (dt)
 end
 
 love.load = function ()
+end
+
+love.joystickadded = function (_)
+    -- TODO: don't know why the function's first parameter
+    -- which should be a joystick object does not work as parameter
+    controller.config.joystick = love.joystick.getJoysticks()[1]
 end
