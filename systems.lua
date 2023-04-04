@@ -107,9 +107,47 @@ function PlayerActionSystem:playerMove(player)
     end
 end
 
+local function goTowardShape(e, targetShape) 
+    local tX, tY = targetShape:center()
+    local eX, eY = e.tangible.shape:center()
+
+    -- we get the angle between the follower and its target
+    local dx = tX - eX
+    local dy = tY - eY
+
+    local angle = atan2(dy, dx) + math.pi * 0.5
+
+    -- and we use it to adapt the velocity to go toward the target
+    e.velocity.x = math.sin(angle) * e.velocity.maxSpeed
+    e.velocity.y = -1 * math.cos(angle) * e.velocity.maxSpeed
+
+    e.tangible.shape:setRotation(angle)
+
+end
+
+local FollowSquadSystem = Concord.system({
+    pool = {"tangibleSquad"}
+})
+
+function FollowSquadSystem:followSquad()
+    local world = self:getWorld()
+    for _, e in ipairs(self.pool) do
+        for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+            local unit = world:getEntityByKey(unitRank._key)
+            -- TODO: handled killed unit
+            if unit:has('cantMove') then
+                goto continue
+            end
+            goTowardShape(unit, unitRank)
+            ::continue::
+        end
+    end
+end
+
 local FollowTargetSystem = Concord.system({
     pool = {"tangible", "velocity", "hasTarget"}
 })
+
 
 function FollowTargetSystem:followTarget()
     local world = self:getWorld()
@@ -188,6 +226,7 @@ function ToTangibleSystem:toTangible()
             totalWidth,
             totalHeight
         )
+        rectangle._ghost = true
         local centerX, centerY = rectangle:center()
         print(centerX, centerY)
 
@@ -200,6 +239,7 @@ function ToTangibleSystem:toTangible()
 
             local point = HC.point(widthOffset + width*0.5  , centerY)
             point._key = unitKey
+            point._ghost = true
             widthOffset = widthOffset + width + gap
             
             unitRanks[#unitRanks + 1] = point
@@ -225,21 +265,22 @@ local fourth_of_pi = math.pi * 0.25
 function CollisionSystem:detectCollision(dt)
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
-        if e:has('squad') then
-            goto bigContinue
-        end
         local teamNumber = e.team.teamNumber
         local shape = e.tangible.shape
+        if shape._ghost == true then
+            goto bigContinue
+        end
         local velocity = e.velocity
         local collisions = HC.collisions(shape)
         for other, separating_vector in pairs(collisions) do
 
+            if other._ghost == true then
+                goto continue
+            end
+
 
             -- print(shape._key, "with other", other._key)
             local otherE = world:getEntityByKey(other._key)
-            if otherE:has('squad') then
-                goto continue
-            end
 
             shape:move(separating_vector.x*1.0001,  separating_vector.y * 1.0001)
             --if (other
@@ -341,6 +382,8 @@ function CombatSystem:combat()
 
             defender.killable.lifePoint = defender.killable.lifePoint - attackPoint
             if defender.killable.lifePoint  <= 0 then
+                -- TODO get defender's squad
+                -- and add a component "sufferLoss" something like that
                 defender:ensure("killed")
                 e:remove("attacking")
                 e:remove("cantMove")
@@ -386,11 +429,12 @@ function FindTargetSystem:lookForTarget()
         local eX, eY = e.tangible.shape:center()
 
         for _, shape in pairs(spatialHash:shapes()) do
-            -- point that are unit target will be targeted here
-            local target = world:getEntityByKey(shape._key)
-            if target:has('squad') then
+            if shape._ghost == true then
+                -- some shape like "point" where a unit must stand in squad
+                -- or the shape of the squad itsel should not be collidable
                 goto continue
             end
+            local target = world:getEntityByKey(shape._key)
 
             if e.team.teamNumber ~= (target:has('team') and target.team.teamNumber or e.team.teamNumber) then
 
