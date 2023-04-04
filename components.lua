@@ -49,6 +49,12 @@ end)
 
 
 --
+Concord.component("followSquad")
 Concord.component("squad", function(c, units)
     c.units = units
+end)
+
+Concord.component("tangibleSquad", function(c, unitRanks)
+    print(unitRanks)
+    c.unitRanks = unitRanks
 end)

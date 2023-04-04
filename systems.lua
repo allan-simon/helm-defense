@@ -11,6 +11,14 @@ function MoveSystem:update(dt)
             e.velocity.x * dt,
             e.velocity.y * dt
         )
+        if e:has('tangibleSquad') then
+            for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+                unitRank:move(
+                    e.velocity.x * dt,
+                    e.velocity.y * dt
+                )
+            end
+        end
     end
 end
 
@@ -38,6 +46,9 @@ function DrawSystem:draw()
 
     for _, e in ipairs(self.squad) do
         e.tangible.shape:draw('line')
+        for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+           unitRank:draw('line') 
+        end
     end
 end
 
@@ -47,6 +58,7 @@ local PlayerActionSystem = Concord.system({
 
 local atan2 = math.atan2
 function PlayerActionSystem:playerMove(player)
+    local world = self:getWorld()
     local x, y = player:get('move')
 
     local angle = nil
@@ -75,7 +87,13 @@ function PlayerActionSystem:playerMove(player)
                 math.max(7, #e.playerMovable.angles - 7)
             ] or currentAngle
             print("yo", angle)
-            e.tangible.shape:setRotation(previousAngle)
+            local centerX, centerY = shape:center() 
+            shape:setRotation(previousAngle)
+            if e:has('tangibleSquad') then
+                for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+                    unitRank:setRotation(previousAngle, centerX, centerY)
+                end
+            end
         else
             -- we reinit the angle buffer
             -- when you stop moving, so that the buffer does not grow and grow
@@ -102,20 +120,7 @@ function FollowTargetSystem:followTarget()
 
         local target = world:getEntityByKey(e.hasTarget.target)
 
-        local tX, tY = target.tangible.shape:center()
-        local eX, eY = e.tangible.shape:center()
-
-        -- we get the angle between the follower and its target
-        local dx = tX - eX
-        local dy = tY - eY
-
-        local angle = atan2(dy, dx) + math.pi * 0.5
-
-        -- and we use it to adapt the velocity to go toward the target
-        e.velocity.x = math.sin(angle) * e.velocity.maxSpeed
-        e.velocity.y = -1 * math.cos(angle) * e.velocity.maxSpeed
-
-        e.tangible.shape:setRotation(angle)
+        goTowardShape(e, target.tangible.shape)
 
         ::continue::
     end
@@ -171,21 +176,41 @@ function ToTangibleSystem:toTangible()
         end
 
         local numberUnits = #e.squad.units
-        local totalHeight = sumHeight + (numberUnits * 2)
-        local totalWidth = sumHeight / numberUnits
+        local gap = 2
+        -- we add a gap of 2 between each units
+        local totalWidth = sumWidth + ((numberUnits - 1) * gap)
+        local totalHeight = sumHeight / numberUnits
 
+        
         local rectangle = HC.rectangle(
-            (sumX/numberUnits) - totalHeight* 0.5,
-            (sumY/numberUnits) - totalWidth* 0.5,
-            totalHeight,
-            totalWidth
+            (sumX/numberUnits) - totalWidth* 0.5,
+            (sumY/numberUnits) - totalHeight* 0.5,
+            totalWidth,
+            totalHeight
         )
+        local centerX, centerY = rectangle:center()
+        print(centerX, centerY)
+
+        local widthOffset = centerX - (totalWidth * 0.5)
+        print(widthOffset, "totalWidth", totalWidth)
+        local unitRanks = {}
+        for _, unitKey in ipairs(e.squad.units) do
+            local unit = world:getEntityByKey(unitKey)
+            local width = unit.drawable.width;
+
+            local point = HC.point(widthOffset + width*0.5  , centerY)
+            point._key = unitKey
+            widthOffset = widthOffset + width + gap
+            
+            unitRanks[#unitRanks + 1] = point
+        end
         rectangle._key = e.key.value
 
         e:give(
             'tangible',
             rectangle
         )
+        :give('tangibleSquad', unitRanks)
         :remove('futureTangible')
 
     end
@@ -299,11 +324,12 @@ local CombatSystem = Concord.system({
 function CombatSystem:combat()
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
-        print(e.key.value, " is attacking ", e.attacking.with, "from ", e.attacking.attackingUsingSide)
+        -- print(e.key.value, " is attacking ", e.attacking.with, "from ", e.attacking.attackingUsingSide)
         local defender = world:getEntityByKey(e.attacking.with)
         if defender == nil then
             e:remove("attacking")
             e:remove("cantMove")
+            goto continue
         end
         if (defender:has('killable')) then
 
@@ -320,10 +346,12 @@ function CombatSystem:combat()
                 e:remove("cantMove")
 
                 e:remove("hasTarget")
-                e:ensure("needTarget")
+                if not e:has("followSquad") then
+                    e:ensure("needTarget")
+                end
             end
         end
-
+        ::continue::
     end
 end
 
@@ -358,6 +386,7 @@ function FindTargetSystem:lookForTarget()
         local eX, eY = e.tangible.shape:center()
 
         for _, shape in pairs(spatialHash:shapes()) do
+            -- point that are unit target will be targeted here
             local target = world:getEntityByKey(shape._key)
             if target:has('squad') then
                 goto continue
@@ -412,6 +441,7 @@ return {
     PlayerActionSystem,
     ToTangibleSystem,
     FollowTargetSystem,
+    FollowSquadSystem,
     MoveSystem,
     CombatSystem,
     CollisionSystem,

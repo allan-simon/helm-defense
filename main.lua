@@ -52,6 +52,7 @@ love.update = function (dt)
     world:emit('playerMove', controller)
     world:emit('lookForTarget')
     world:emit('followTarget')
+    world:emit('followSquad')
 
     -- TODO: emit('unit should get to their place in the squad')
 

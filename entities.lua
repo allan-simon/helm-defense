@@ -3,7 +3,7 @@ local Concord = require("Concord")
 local function soldier(e, name)
     e
     :give("key", name)
-    :give("futureTangible", 400, 400)
+    :give("futureTangible", 200, 400)
     :give("velocity", 100)
     :give("drawable", 'soldier.png')
     :give("team", 1)
@@ -36,6 +36,7 @@ local function allySquad(e)
     for i = 1,10 do
         local s = Concord.entity(world)
             :assemble(soldier, nil)
+            :give("followSquad")
         keys[i] = s.key.value
     end
 
