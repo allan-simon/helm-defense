@@ -36,7 +36,7 @@ local function allySquad(e)
     for i = 1,10 do
         local s = Concord.entity(world)
             :assemble(soldier, nil)
-            :give("followSquad")
+            :give("inSquad", e.key.value)
         keys[i] = s.key.value
     end
 

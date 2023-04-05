@@ -49,12 +49,15 @@ end)
 
 
 --
-Concord.component("followSquad")
+Concord.component("inSquad", function (c, key)
+    c.key = key
+end)
 Concord.component("squad", function(c, units)
     c.units = units
 end)
 
 Concord.component("tangibleSquad", function(c, unitRanks)
-    print(unitRanks)
+    -- units ranks are HC's point representing where unit
+    -- should be in the rank
     c.unitRanks = unitRanks
 end)

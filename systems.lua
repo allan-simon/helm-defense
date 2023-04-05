@@ -86,7 +86,6 @@ function PlayerActionSystem:playerMove(player)
                 -- TODO: we should do this only for keyboard
                 math.max(7, #e.playerMovable.angles - 7)
             ] or currentAngle
-            print("yo", angle)
             local centerX, centerY = shape:center() 
             shape:setRotation(previousAngle)
             if e:has('tangibleSquad') then
@@ -145,8 +144,7 @@ function FollowSquadSystem:followSquad()
     for _, e in ipairs(self.pool) do
         for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
             local unit = world:getEntityByKey(unitRank._key)
-            -- TODO: handled killed unit
-            if unit:has('cantMove') then
+            if unit == nil or unit:has('cantMove') then
                 goto continue
             end
             -- we allow a tolerance of 1
@@ -222,8 +220,15 @@ function ToTangibleSystem:toTangible()
         local sumAngleX = 0
         local sumAngleY = 0
 
+        local units = {}
         for _, unitKey in ipairs(e.squad.units) do
             local unit = world:getEntityByKey(unitKey)
+            -- remove dead units
+            if unit == nil then
+                goto continue
+            end
+            units[#units+1] = unitKey
+
 
             local x, y = unit.tangible.shape:center()
             sumX = sumX + x
@@ -231,6 +236,13 @@ function ToTangibleSystem:toTangible()
 
             sumWidth = sumWidth + unit.drawable.width
             sumHeight = sumHeight + unit.drawable.height
+
+            ::continue::
+        end
+        e.squad.units = units
+        if #units == 0 then
+            e:ensure('killed')
+            goto bigContinue
         end
 
         local numberUnits = #e.squad.units
@@ -273,6 +285,7 @@ function ToTangibleSystem:toTangible()
         :give('tangibleSquad', unitRanks)
         :remove('futureTangible')
 
+        ::bigContinue::
     end
 end
 
@@ -409,7 +422,7 @@ function CombatSystem:combat()
                 e:remove("cantMove")
 
                 e:remove("hasTarget")
-                if not e:has("followSquad") then
+                if not e:has("inSquad") then
                     e:ensure("needTarget")
                 end
             end
@@ -423,9 +436,19 @@ local KillRemoverSystem = Concord.system({
 })
 
 function KillRemoverSystem:removeKilled()
+    local world = self:getWorld()
     for _, e in ipairs(self.pool) do
         if e:has("tangible") then
             HC.remove(e.tangible.shape)
+            if e:has("tangibleSquad") then
+                for _, point in ipairs(e.tangibleSquad.unitRanks) do
+                    HC.remove(point)
+                end
+            end
+        end
+        if e:has("inSquad") then
+            local squad = world:getEntityByKey(e.inSquad.key)
+            squad:ensure("futureTangible")
         end
         e:destroy()
     end
