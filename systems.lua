@@ -7,6 +7,10 @@ local MoveSystem = Concord.system({
 
 function MoveSystem:update(dt)
     for _, e in ipairs(self.pool) do
+
+        -- TODO the rotation change maybe should be there
+        -- so handling volte-face of squad (even those not player controlled)
+        -- is all done at the same place
         e.tangible.shape:move(
             e.velocity.x * dt,
             e.velocity.y * dt
@@ -31,7 +35,7 @@ local DrawSystem = Concord.system({
 function DrawSystem:draw()
     for _, e in ipairs(self.pool) do
         local shape = e.tangible.shape
-        x, y = shape:center()
+        local x, y = shape:center()
         love.graphics.draw(
             e.drawable.image,
             x,
@@ -47,7 +51,7 @@ function DrawSystem:draw()
     for _, e in ipairs(self.squad) do
         e.tangible.shape:draw('line')
         for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
-           unitRank:draw('line') 
+           unitRank:draw('line')
         end
     end
 end
@@ -58,7 +62,6 @@ local PlayerActionSystem = Concord.system({
 
 local atan2 = math.atan2
 function PlayerActionSystem:playerMove(player)
-    local world = self:getWorld()
     local x, y = player:get('move')
 
     local angle = nil
@@ -71,42 +74,59 @@ function PlayerActionSystem:playerMove(player)
         if e:has('cantMove') then
             goto continue
         end
-
-        local shape = e.tangible.shape
-        if angle ~= nil then
-            table.insert(e.playerMovable.angles, angle)
-            local currentAngle = shape:rotation()
-            -- when you release the keys of going in diagonal
-            -- during a very short instant you will have only
-            -- one key press, not two
-            -- so instead we take only the nth last angle to avoid this
-            local previousAngle = e.playerMovable.angles[
-                -- with the same logic we discard the nth first
-                -- input because they are not reliable
-                -- TODO: we should do this only for keyboard
-                math.max(7, #e.playerMovable.angles - 7)
-            ] or currentAngle
-            local centerX, centerY = shape:center() 
-            shape:setRotation(previousAngle)
-            if e:has('tangibleSquad') then
-                for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
-                    unitRank:setRotation(previousAngle, centerX, centerY)
-                end
-            end
-        else
-            -- we reinit the angle buffer
-            -- when you stop moving, so that the buffer does not grow and grow
-            e.playerMovable.angles = {}
-        end
-
         e.velocity.x = x * e.velocity.maxSpeed
         e.velocity.y = y * e.velocity.maxSpeed
 
+        local shape = e.tangible.shape
+        if angle == nil then
+            -- we reinit the angle buffer
+            -- when you stop moving, so that the buffer does not grow and grow
+            e.playerMovable.angles = {}
+            goto continue
+        end
+        table.insert(e.playerMovable.angles, angle)
+        local currentAngle = shape:rotation()
+        -- when you release the keys of going in diagonal
+        -- during a very short instant you will have only
+        -- one key press, not two
+        -- so instead we take only the nth last angle to avoid this
+        local actualAngle = e.playerMovable.angles[
+            -- with the same logic we discard the nth first
+            -- input because they are not reliable
+            -- TODO: we should do this only for keyboard
+            math.max(7, #e.playerMovable.angles - 7)
+        ] or currentAngle
+
+        local centerX, centerY = shape:center()
+
+        -- if the angle hasn't changed, there's nothing to do
+        if actualAngle == currentAngle then
+            goto continue
+        end
+
+        shape:setRotation(actualAngle)
+        if e:has('tangibleSquad') then
+
+            -- if the squad has rotated by nearly 180 degree
+            -- we rotate the unit rank on itself rather than on the
+            -- squad center, otherwise when doing a 180 degree turn
+            -- suddenly the unit at the most left will run to the most right
+            -- which is not natural
+            if (previousRotation - actualAngle) % math.pi < 0.01 then
+                for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+                    unitRank:setRotation(actualAngle)
+                end
+            else
+                for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+                    unitRank:setRotation(actualAngle, centerX, centerY)
+                end
+            end
+        end
         ::continue::
     end
 end
 
-local function goTowardShape(e, targetShape, tolerance) 
+local function goTowardShape(e, targetShape, tolerance)
     tolerance = tolerance or 0
 
     local tX, tY = targetShape:center()
@@ -136,13 +156,16 @@ local function goTowardShape(e, targetShape, tolerance)
 end
 
 local FollowSquadSystem = Concord.system({
-    pool = {"tangibleSquad"}
+    pool = {"tangible", "tangibleSquad"}
 })
 
 function FollowSquadSystem:followSquad()
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
-        for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
+
+        local unitRanks = e.tangibleSquad.unitRanks
+
+        for _, unitRank in ipairs(unitRanks) do
             local unit = world:getEntityByKey(unitRank._key)
             if unit == nil or unit:has('cantMove') then
                 goto continue
