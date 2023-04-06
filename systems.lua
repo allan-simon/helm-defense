@@ -104,7 +104,6 @@ function PlayerActionSystem:playerMove(player)
             goto continue
         end
 
-        shape:setRotation(actualAngle)
         if e:has('tangibleSquad') then
 
             -- if the squad has rotated by nearly 180 degree
@@ -112,7 +111,7 @@ function PlayerActionSystem:playerMove(player)
             -- squad center, otherwise when doing a 180 degree turn
             -- suddenly the unit at the most left will run to the most right
             -- which is not natural
-            if (previousRotation - actualAngle) % math.pi < 0.01 then
+            if (currentAngle - actualAngle) % math.pi < 0.01 then
                 for _, unitRank in ipairs(e.tangibleSquad.unitRanks) do
                     unitRank:setRotation(actualAngle)
                 end
@@ -122,6 +121,8 @@ function PlayerActionSystem:playerMove(player)
                 end
             end
         end
+        shape:setRotation(actualAngle)
+
         ::continue::
     end
 end
