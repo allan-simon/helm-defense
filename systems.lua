@@ -62,6 +62,7 @@ local PlayerActionSystem = Concord.system({
 
 local atan2 = math.atan2
 function PlayerActionSystem:playerMove(player)
+    local world = self:getWorld()
     local x, y = player:get('move')
 
     local angle = nil
@@ -72,7 +73,12 @@ function PlayerActionSystem:playerMove(player)
     end
     for _, e in ipairs(self.pool) do
         if e:has('cantMove') then
-            goto continue
+            -- we verify the one blocking us is still there
+            if world:getEntityByKey(e.cantMove.blockedByKey) == nil then
+                e:remove('cantMove')
+            else
+                goto continue
+            end
         end
         e.velocity.x = x * e.velocity.maxSpeed
         e.velocity.y = y * e.velocity.maxSpeed
@@ -168,8 +174,16 @@ function FollowSquadSystem:followSquad()
 
         for _, unitRank in ipairs(unitRanks) do
             local unit = world:getEntityByKey(unitRank._key)
-            if unit == nil or unit:has('cantMove') then
+            if unit == nil then
                 goto continue
+            end
+            if unit:has('cantMove') then
+                -- we verify the one blocking us is still there
+                if world:getEntityByKey(unit.cantMove.blockedByKey) == nil then
+                    unit:remove('cantMove')
+                else
+                    goto continue
+                end
             end
             -- we allow a tolerance of 1
             -- otherwise the units would never quite reach the exact point
@@ -241,8 +255,8 @@ function ToTangibleSystem:toTangible()
         local sumHeight = 0
 
         -- TODO: compute the "circular mean"
-        local sumAngleX = 0
-        local sumAngleY = 0
+        -- local _sumAngleX = 0
+        -- local _sumAngleY = 0
 
         local units = {}
         for _, unitKey in ipairs(e.squad.units) do
@@ -275,7 +289,7 @@ function ToTangibleSystem:toTangible()
         local totalWidth = sumWidth + ((numberUnits - 1) * gap)
         local totalHeight = sumHeight / numberUnits
 
-        
+
         local rectangle = HC.rectangle(
             (sumX/numberUnits) - totalWidth* 0.5,
             (sumY/numberUnits) - totalHeight* 0.5,
@@ -297,7 +311,7 @@ function ToTangibleSystem:toTangible()
             point._key = unitKey
             point._ghost = true
             widthOffset = widthOffset + width + gap
-            
+
             unitRanks[#unitRanks + 1] = point
         end
         rectangle._key = e.key.value
@@ -319,7 +333,7 @@ local CollisionSystem = Concord.system({
 
 local pi = math.pi
 local fourth_of_pi = math.pi * 0.25
-function CollisionSystem:detectCollision(dt)
+function CollisionSystem:detectCollision(_)
     local world = self:getWorld()
     for _, e in ipairs(self.pool) do
         local teamNumber = e.team.teamNumber
@@ -399,13 +413,13 @@ function CollisionSystem:detectCollision(dt)
             -- except if you are touched from the back
             if touchedDirection ~= "back" then
                 e:ensure("attacking", otherE.key.value, touchedDirection, otherTouchedDirection)
-                otherE:ensure("cantMove")
+                otherE:ensure("cantMove", e.key.value)
             end
             --the other attacks and you hence can't move
             -- except if the other is touched from the back
             if otherTouchedDirection ~= "back" then
                 otherE:ensure("attacking", e.key.value, otherTouchedDirection, touchedDirection)
-                e:ensure("cantMove")
+                e:ensure("cantMove", otherE.key.value)
             end
 
 

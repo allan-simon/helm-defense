@@ -24,7 +24,9 @@ Concord.component("attacking",function( c, with, attackingUsingSide, attackedSid
     c.attackedSide = attackedSide
 end)
 
-Concord.component("cantMove")
+Concord.component("cantMove", function (c, blockedByKey)
+    c.blockedByKey = blockedByKey
+end)
 
 Concord.component("playerMovable", function (c)
     c.angles = {}
