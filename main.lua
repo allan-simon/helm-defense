@@ -18,7 +18,11 @@ local controller = baton.new {
 }
 
 require('components')
-world:addSystems(unpack(require('systems')))
+local Systems = {}
+Concord.utils.loadNamespace("systems/", Systems)
+for _, s in pairs(Systems) do
+    world:addSystem(s)
+end
 
 local entities = require("entities")
 

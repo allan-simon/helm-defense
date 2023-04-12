@@ -2,8 +2,6 @@ local Concord = require("Concord")
 local HC = require("HC")
 local atan2 = math.atan2
 
-
-
 local CollisionSystem = Concord.system({
     pool = {"tangible", "velocity"}
 })
@@ -106,103 +104,4 @@ function CollisionSystem:detectCollision(_)
     end
 end
 
-
-local KillRemoverSystem = Concord.system({
-    pool = {"killed"}
-})
-
-function KillRemoverSystem:removeKilled()
-    local world = self:getWorld()
-    for _, e in ipairs(self.pool) do
-        print("remove killed")
-        if e:has("tangible") then
-            HC.remove(e.tangible.shape)
-            if e:has("tangibleSquad") then
-                for _, point in ipairs(e.tangibleSquad.unitRanks) do
-                    HC.remove(point)
-                end
-            end
-        end
-        if e:has("inSquad") then
-            local squad = world:getEntityByKey(e.inSquad.key)
-            squad:ensure("futureTangible")
-        end
-        e:destroy()
-    end
-end
-
---
-
-local FindTargetSystem = Concord.system({pool = {"needTarget", "tangible", "team"} })
-function FindTargetSystem:lookForTarget()
-
-    local world = self:getWorld()
-    local spatialHash = HC.hash()
-
-
-    for _, e in ipairs(self.pool) do
-
-        local nearest = nil
-        local distance = math.huge
-
-
-        local eX, eY = e.tangible.shape:center()
-
-        for _, shape in pairs(spatialHash:shapes()) do
-            if shape._ghost == true then
-                -- some shape like "point" where a unit must stand in squad
-                -- or the shape of the squad itsel should not be collidable
-                goto continue
-            end
-            local target = world:getEntityByKey(shape._key)
-
-            if e.team.teamNumber ~= (target:has('team') and target.team.teamNumber or e.team.teamNumber) then
-
-                local x, y = shape:center()
-                local currentDistance = (
-                    (eX - x)*(eX - x) +
-                    (eY - y)*(eY - y)
-                )
-                if currentDistance < distance then
-                    nearest = shape._key
-                    distance = currentDistance
-                end
-            end
-            ::continue::
-        end
-
-        if nearest ~= nil and not e:has('playerMovable') then
-            e:remove('needTarget')
-            e:ensure('hasTarget', nearest)
-        end
-
-    end
-end
-
---
-
-local entities = require("entities")
-local EnemySpawnerSystem = Concord.system({pool = {"killable"} })
-function EnemySpawnerSystem:spawn(player)
-    local world = self:getWorld()
-    local needSpawn = true
-    for _, e in ipairs(self.pool) do
-        if e:has("team") and e.team.teamNumber == 2 then
-            needSpawn = false
-            break
-        end
-    end
-
-    if needSpawn then
-        Concord.entity(world)
-            :assemble(entities.enemy, player)
-    end
-
-end
-
-return {
-    CollisionSystem,
-    KillRemoverSystem,
-    EnemySpawnerSystem,
-    FindTargetSystem,
-}
+return CollisionSystem
