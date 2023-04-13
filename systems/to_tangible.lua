@@ -81,26 +81,36 @@ function ToTangibleSystem:toTangible()
         end
 
 
-        local gap = 2
+        local gap = 5
         -- we add a gap of 2 between each units
         local totalWidth = (unitMaxWidth + gap) * numberCols
         local totalHeight = (unitMaxHeight + gap) * numberRows
 
+        -- the gravity center of the squad
+        -- is set to the average point of the units
+        local centerX = (sumX/numberUnits)
+        local centerY = (sumY/numberUnits)
+
+        if e:has('tangible') then
+            centerX, centerY = e.tangible.shape:center()
+        end
+
+
 
         local rectangle = HC.rectangle(
-            -- the gravity center of the squad
-            -- is set to the average point of the units
-            (sumX/numberUnits) - totalWidth* 0.5,
-            (sumY/numberUnits) - totalHeight* 0.5,
-            --
+            centerX - totalWidth* 0.5,
+            centerY - totalHeight* 0.5,
             totalWidth,
             totalHeight
         )
+        if e:has('tangible') then
+            rectangle:setRotation(e.tangible.shape:rotation())
+        end
+        local currentAngle =  rectangle:rotation()
+
         -- hack: we add _ghost to the shape like this
         -- as it's not a Entity so we can't add to it a Component
         rectangle._ghost = true
-
-        local centerX, centerY = rectangle:center()
 
         local widthOffset = centerX - (totalWidth * 0.5)
         local heightOffset = centerY - (totalHeight * 0.5)
@@ -117,6 +127,7 @@ function ToTangibleSystem:toTangible()
                      widthOffset + (unitMaxWidth + gap)*(j-1) + unitMaxWidth*0.5,
                      heightOffset + (unitMaxHeight + gap)*(i -1) + unitMaxHeight*0.5
                 )
+                point:setRotation(currentAngle, centerX, centerY)
                 position = position + 1
                 point._key = unitsKeys[position]
 
