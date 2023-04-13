@@ -33,10 +33,6 @@ local allySquad = Concord.entity(world)
 local firstPlayer = Concord.entity(world)
     :assemble(entities.soldier, "player1")
 
-Concord.entity(world)
-    :assemble(entities.enemy, firstPlayer.key.value)
-
-
 love.draw = function()
     world:emit("draw")
 end
@@ -49,8 +45,6 @@ love.update = function (dt)
     world:emit('lookForTarget')
     world:emit('followTarget')
     world:emit('followSquad')
-
-    -- TODO: emit('unit should get to their place in the squad')
 
     world:emit("update", dt)
     world:emit("detectCollision", dt)
