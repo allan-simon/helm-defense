@@ -1,6 +1,14 @@
 # helm-defense
 simple game in love2d 
 
+## Bibliography
+
+### Colission avoidance
+
+  * https://gamma.cs.unc.edu/RVO2/
+  * https://github.com/PathPlanning/ORCA-algorithm implementation of ORCA algorithm
+  * https://www.red3d.com/cwr/ (need to install CheerpJ to see the java applets)
+
 ## List of problems enncountered and solution found
 
 
